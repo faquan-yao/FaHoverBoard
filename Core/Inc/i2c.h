@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -41,7 +41,10 @@ extern I2C_HandleTypeDef hi2c2;
 void MX_I2C2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+int Sensors_I2C_WriteRegister(unsigned char slave_addr, unsigned char reg_addr,
+                              unsigned char length, unsigned char const *data);
+int Sensors_I2C_ReadRegister(unsigned char slave_addr, unsigned char reg_addr,
+                             unsigned char length, unsigned char *data);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

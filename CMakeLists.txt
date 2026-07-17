@@ -19,7 +19,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set the project name
-set(CMAKE_PROJECT_NAME FaHoverBoard)
+set(CMAKE_PROJECT_NAME FaHotWheels)
 
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
@@ -37,9 +37,6 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
-set(TARGET_CHIP STM32F10x)
-set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/STM32F103XX_FLASH.ld)
-
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -47,23 +44,12 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/algorithm/kalman.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/algorithm/pid.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/algorithm/fixed_math.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/App/Src/interrupt.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Src/encoder/encoder.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Src/mpu6050/mpu6050.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Src/mpu6050/inv_mpu.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Src/mpu6050/inv_mpu_dmp_motion_driver.c
+    # Add user sources here
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/App/Inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc/algorithm
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Inc/encoder
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/BSP/Inc/mpu6050
+    # Add user defined include paths
 )
 
 # Add project symbols (macros)

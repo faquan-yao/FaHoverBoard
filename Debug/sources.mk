@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (13.3.rel1)
+# Toolchain: GNU Tools for STM32 (14.3.rel1)
 ################################################################################
 
 ELF_SRCS := 
@@ -10,6 +10,7 @@ C_SRCS :=
 S_UPPER_SRCS := 
 O_SRCS := 
 CYCLO_FILES := 
+OBJCOPY_HEX := 
 SIZE_OUTPUT := 
 OBJDUMP_LIST := 
 SU_FILES := 
@@ -19,18 +20,12 @@ MAP_FILES :=
 S_DEPS := 
 S_UPPER_DEPS := 
 C_DEPS := 
+OBJCOPY_BIN := 
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-App/Src \
-Core/Src/algorithm \
 Core/Src \
 Core/Startup \
-Drivers/BSP/Src/encoder \
-Drivers/BSP/Src/mpu6050 \
+Drivers/BSP/Mpu6050 \
 Drivers/STM32F1xx_HAL_Driver/Src \
-Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 \
-Middlewares/Third_Party/FreeRTOS/Source \
-Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 \
-Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang \
 

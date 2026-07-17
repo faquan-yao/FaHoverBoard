@@ -1,3 +1,15 @@
-build
+﻿build
 mx.scratch
 !.settings
+
+# STM32CubeIDE / local build artifacts
+Debug/**/*.o
+Debug/**/*.d
+Debug/**/*.su
+Debug/**/*.cyclo
+Debug/**/*.elf
+Debug/**/*.bin
+Debug/**/*.hex
+Debug/**/*.map
+Debug/**/*.list
+Debug/**/*.proxy_cache

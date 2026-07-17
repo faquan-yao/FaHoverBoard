@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -63,7 +63,10 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
   if(i2cHandle->Instance==I2C2)
   {
   /* USER CODE BEGIN I2C2_MspInit 0 */
-
+    /* STM32F1: enable + soft-reset I2C before GPIO to avoid BUSY stuck */
+    __HAL_RCC_I2C2_CLK_ENABLE();
+    __HAL_RCC_I2C2_FORCE_RESET();
+    __HAL_RCC_I2C2_RELEASE_RESET();
   /* USER CODE END I2C2_MspInit 0 */
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -73,6 +76,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     */
     GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -110,5 +114,30 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+/* InvenSense eMPL: 0=success, non-zero=fail. DevAddr is HAL 8-bit form (e.g. 0xD0). */
+int Sensors_I2C_WriteRegister(unsigned char slave_addr, unsigned char reg_addr,
+                              unsigned char length, unsigned char const *data)
+{
+  if (HAL_I2C_Mem_Write(&hi2c2, slave_addr, reg_addr, I2C_MEMADD_SIZE_8BIT,
+                        (uint8_t *)data, length, 100) != HAL_OK) {
+    HAL_I2C_DeInit(&hi2c2);
+    MX_I2C2_Init();
+    return -1;
+  }
+  return 0;
+}
+
+int Sensors_I2C_ReadRegister(unsigned char slave_addr, unsigned char reg_addr,
+                             unsigned char length, unsigned char *data)
+{
+  if (HAL_I2C_Mem_Read(&hi2c2, slave_addr, reg_addr, I2C_MEMADD_SIZE_8BIT,
+                       data, length, 100) != HAL_OK) {
+    HAL_I2C_DeInit(&hi2c2);
+    MX_I2C2_Init();
+    return -1;
+  }
+  return 0;
+}
 
 /* USER CODE END 1 */

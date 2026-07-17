@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -61,12 +61,10 @@ void Error_Handler(void);
 #define ENCODERAA_GPIO_Port GPIOA
 #define ENCODERAB_Pin GPIO_PIN_1
 #define ENCODERAB_GPIO_Port GPIOA
-#define ENCODERBA_Pin GPIO_PIN_6
-#define ENCODERBA_GPIO_Port GPIOA
-#define ENCODERBB_Pin GPIO_PIN_7
+#define ENCODERBB_Pin GPIO_PIN_6
 #define ENCODERBB_GPIO_Port GPIOA
-#define PWMB_Pin GPIO_PIN_9
-#define PWMB_GPIO_Port GPIOE
+#define ENCODERBA_Pin GPIO_PIN_7
+#define ENCODERBA_GPIO_Port GPIOA
 #define PULSE_LIGHT_Pin GPIO_PIN_11
 #define PULSE_LIGHT_GPIO_Port GPIOD
 #define PWMA_Pin GPIO_PIN_12
@@ -75,12 +73,14 @@ void Error_Handler(void);
 #define AIN2_GPIO_Port GPIOG
 #define AIN1_Pin GPIO_PIN_3
 #define AIN1_GPIO_Port GPIOG
-#define STANDBY_Pin GPIO_PIN_4
-#define STANDBY_GPIO_Port GPIOG
+#define STBY_Pin GPIO_PIN_4
+#define STBY_GPIO_Port GPIOG
 #define BIN1_Pin GPIO_PIN_5
 #define BIN1_GPIO_Port GPIOG
 #define BIN2_Pin GPIO_PIN_6
 #define BIN2_GPIO_Port GPIOG
+#define PWMB_Pin GPIO_PIN_8
+#define PWMB_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 

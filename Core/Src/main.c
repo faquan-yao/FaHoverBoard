@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"
@@ -26,6 +25,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
+#include "mpu6050.h"
+#include "tb6612fng.h"
+#include "encoder.h"
+#include "pid_balance.h"
 
 /* USER CODE END Includes */
 
@@ -47,25 +51,20 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-int __io_putchar(int ch) {
-//	taskENTER_CRITICAL();
-	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 1000);
-//	taskEXIT_CRITICAL();
-	return ch;
-}
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int __io_putchar(int ch) {
+	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 1000);
+	return ch;
+}
 /* USER CODE END 0 */
 
 /**
@@ -97,34 +96,69 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  MX_I2C2_Init();
+  MX_TIM4_Init();
+  MX_TIM1_Init();
   MX_TIM3_Init();
   MX_TIM5_Init();
   MX_TIM6_Init();
-  MX_TIM7_Init();
-  MX_USART1_UART_Init();
-  MX_I2C2_Init();
-  MX_TIM1_Init();
-  MX_TIM4_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(100); /* MPU6050 power-up settle */
+
+  /* Probe I2C: AD0=GND → 0xD0, AD0=VCC → 0xD2 (HAL 8-bit addr) */
+  if (HAL_I2C_IsDeviceReady(&hi2c2, 0xD0, 5, 200) == HAL_OK) {
+	  printf("MPU6050 ACK @ 0x68 (0xD0)\r\n");
+  } else if (HAL_I2C_IsDeviceReady(&hi2c2, 0xD2, 5, 200) == HAL_OK) {
+	  printf("MPU6050 ACK @ 0x69 (0xD2) — check AD0 / addr in inv_mpu.c\r\n");
+  } else {
+	  printf("MPU6050 no ACK on I2C2 (PB10/SCL, PB11/SDA). Check wiring/power.\r\n");
+  }
+
+  int ret = 0;
+  do {
+	  ret = MPU6050_DMP_init();
+	  if (ret != 0) {
+		  printf("MPU6050 init failure, ret = %d!\r\n", ret);
+		  HAL_Delay(500);
+	  }
+  } while (ret);
+  printf("MPU6050 Ready!\r\n");
+
+//  int i = 0;
+//  MotorInit();
+//  Enc_Init();
+
   /* USER CODE END 2 */
-
-  /* Init scheduler */
-  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
-  MX_FREERTOS_Init();
-
-  /* Start scheduler */
-  osKernelStart();
-
-  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  float roll, yaw, pitch;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  MPU6050_DMP_Get_Date(&pitch, &roll, &yaw);
+	  BalancePID.NowVal = pitch;
+	  float pid_balance = PID_Calc(&BalancePID);
+	  printf("%.2f, %.2f, %.2f, %.2f.\r\n", pitch, roll, yaw, pid_balance);
+
+//	  int32_t left, right;
+//	  ENC_GetSpeeds(&left, &right);
+//	  printf(" %ld, %ld,", left, right);
+//	  SpeedPID.NowVal = left;
+//	  float pid_speed = PID_Calc(&SpeedPID);
+//	  printf("%.2f,", pid_speed);
+//	  int16_t duty = 7 * pid_balance + 3 * pid_speed;
+//	  printf(" %d\r\n", duty);
+//	  MotorControl(duty);
+      HAL_Delay(10);
+	  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
+//	  i++;
+//	  if (i >= 10) {
+//		  i = 0;
+//	  }
   }
   /* USER CODE END 3 */
 }
