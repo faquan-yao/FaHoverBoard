@@ -2,7 +2,6 @@
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "math.h"
-#include "kalman.h"
 
 /* The sensors can be mounted onto the board in any orientation. The mounting
  * matrix seen below tells the MPL how to rotate the raw data from thei
@@ -132,8 +131,10 @@ int MPU6050_DMP_init(void)
     {
         return ERROR_SET_ORIENTATION;
     }
-    //设置DMP功能（平衡车只需6轴四元数；GYRO_CAL用于静止时零偏校准）
-    ret = dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL);
+    // 6轴四元数 + 校准陀螺（给平衡环 D 项用）+ 静止零偏
+    ret = dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT |
+                             DMP_FEATURE_SEND_CAL_GYRO |
+                             DMP_FEATURE_GYRO_CAL);
     if(ret != 0)
     {
         return ERROR_ENABLE_FEATURE;
@@ -159,7 +160,7 @@ int MPU6050_DMP_init(void)
     return 0;
 }
 
-int MPU6050_DMP_Get_Date(float *pitch, float *roll, float *yaw)
+int MPU6050_DMP_Get_Date(float *pitch, float *roll, float *yaw, float *gyro_pitch_dps)
 {
     float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
     short gyro[3];
@@ -168,25 +169,36 @@ int MPU6050_DMP_Get_Date(float *pitch, float *roll, float *yaw)
     unsigned long timestamp;
     short sensors;
     unsigned char more;
-    if(dmp_read_fifo(gyro, accel, quat, &timestamp, &sensors, &more))
+    if (dmp_read_fifo(gyro, accel, quat, &timestamp, &sensors, &more))
     {
         return -1;
     }
 
-    if(sensors & INV_WXYZ_QUAT)
+    if (!(sensors & INV_WXYZ_QUAT))
     {
-        q0 = quat[0] / Q30;
-        q1 = quat[1] / Q30;
-        q2 = quat[2] / Q30;
-        q3 = quat[3] / Q30;
+        return -1;
+    }
 
-        float p = asin(-2 * q1 * q3 + 2 * q0 * q2) * 57.3; // pitch
-        float r = atan2(2 * q2 * q3 + 2 * q0 * q1, -2 * q1 * q1 - 2 * q2 * q2 + 1) * 57.3; // roll
-        float y = atan2(2 * (q0 * q3 + q1 * q2), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.3; // yaw
+    q0 = quat[0] / Q30;
+    q1 = quat[1] / Q30;
+    q2 = quat[2] / Q30;
+    q3 = quat[3] / Q30;
 
-        *pitch = kalman_update(&pitch_KF, p);
-        *roll = kalman_update(&roll_KF, r);
-        *yaw = kalman_update(&yaw_KF, y);
+    /* Use DMP angle directly — extra Kalman here adds lag and makes it rock */
+    float p = asinf(-2.0f * q1 * q3 + 2.0f * q0 * q2) * 57.2957795f;
+    float r = atan2f(2.0f * q2 * q3 + 2.0f * q0 * q1,
+                     -2.0f * q1 * q1 - 2.0f * q2 * q2 + 1.0f) * 57.2957795f;
+    float y = atan2f(2.0f * (q0 * q3 + q1 * q2),
+                     q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.2957795f;
+
+    *pitch = p;
+    *roll = r;
+    *yaw = y;
+
+    /* ±2000 dps → 16.4 LSB/(°/s) */
+    short g = gyro[PITCH_GYRO_AXIS];
+    if (gyro_pitch_dps) {
+        *gyro_pitch_dps = (float)g / 16.4f;
     }
 
     return 0;

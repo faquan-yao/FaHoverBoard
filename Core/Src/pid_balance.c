@@ -5,17 +5,20 @@
  *      Author: yaofa
  */
 #include "pid_balance.h"
+#include <math.h>
 
-
-// 平衡环PID初始化（核心参数需根据实际硬件调试）
+/*
+ * Angle PD: u = Kp*err - Kd*gyro
+ * Prefer gyro damping over d(error)/dt — much less rock near upright.
+ */
 PID_TypeDef BalancePID = {
-    .Kp = 8.0f,    // 比例系数（示例值，需调试）
-    .Ki = 0.2f,    // 积分系数（示例值，需调试）
-    .Kd = 1.5f,    // 微分系数（示例值，需调试）
-    .MaxOut = 80.0f,// PWM最大输出占空比（%）
-    .MinOut = -80.0f,// PWM最小输出占空比（%）
-    .MaxI = 50.0f, // 积分限幅
-    .SetVal = 0.0f, // 平衡目标角度（水平0°）
+    .Kp = 2.2f,
+    .Ki = 0.0f,
+    .Kd = 0.12f,    /* on gyro °/s, not on angle difference */
+    .MaxOut = 45.0f,
+    .MinOut = -45.0f,
+    .MaxI = 3.0f,
+    .SetVal = 0.0f,
     .NowVal = 0.0f,
     .Err = 0.0f,
     .LastErr = 0.0f,
@@ -26,28 +29,27 @@ PID_TypeDef BalancePID = {
     .Out = 0.0f
 };
 
+/* Slow outer trim only — do not fight the angle loop */
 PID_TypeDef SpeedPID = {
-	    .Kp = 8.0f,    // 比例系数（示例值，需调试）
-	    .Ki = 0.2f,    // 积分系数（示例值，需调试）
-	    .Kd = 1.5f,    // 微分系数（示例值，需调试）
-	    .MaxOut = 80.0f,// PWM最大输出占空比（%）
-	    .MinOut = -80.0f,// PWM最小输出占空比（%）
-	    .MaxI = 50.0f, // 积分限幅
-	    .SetVal = 0.0f, // 平衡目标角度（水平0°）
-	    .NowVal = 0.0f,
-	    .Err = 0.0f,
-	    .LastErr = 0.0f,
-	    .PreErr = 0.0f,
-	    .Pout = 0.0f,
-	    .Iout = 0.0f,
-	    .Dout = 0.0f,
-	    .Out = 0.0f
-	};
+    .Kp = 0.008f,
+    .Ki = 0.0f,
+    .Kd = 0.0f,
+    .MaxOut = 1.5f,
+    .MinOut = -1.5f,
+    .MaxI = 1.0f,
+    .SetVal = 0.0f,
+    .NowVal = 0.0f,
+    .Err = 0.0f,
+    .LastErr = 0.0f,
+    .PreErr = 0.0f,
+    .Pout = 0.0f,
+    .Iout = 0.0f,
+    .Dout = 0.0f,
+    .Out = 0.0f
+};
 
-// PID参数初始化（可外部调用修改参数）
 void PID_Init(void)
 {
-    // 重置PID中间变量
     BalancePID.Err = 0.0f;
     BalancePID.LastErr = 0.0f;
     BalancePID.PreErr = 0.0f;
@@ -61,31 +63,56 @@ void PID_Init(void)
     SpeedPID.Out = 0.0f;
 }
 
-// PID核心计算函数
 float PID_Calc(PID_TypeDef *pid)
 {
-    // 1. 计算当前误差（设定值 - 当前值）
     pid->Err = pid->SetVal - pid->NowVal;
 
-    // 2. 比例项
     pid->Pout = pid->Kp * pid->Err;
 
-    // 3. 积分项（积分限幅防止饱和）
     pid->Iout += pid->Ki * pid->Err;
-    if (pid->Iout > pid->MaxI) pid->Iout = pid->MaxI;
-    if (pid->Iout < -pid->MaxI) pid->Iout = -pid->MaxI;
+    if (pid->Iout > pid->MaxI) {
+        pid->Iout = pid->MaxI;
+    }
+    if (pid->Iout < -pid->MaxI) {
+        pid->Iout = -pid->MaxI;
+    }
 
-    // 4. 微分项（二阶微分，减少抖振）
-    pid->Dout = pid->Kd * (pid->Err - 2 * pid->LastErr + pid->PreErr);
+    pid->Dout = pid->Kd * (pid->Err - pid->LastErr);
 
-    // 5. 总输出（限幅）
     pid->Out = pid->Pout + pid->Iout + pid->Dout;
-    if (pid->Out > pid->MaxOut) pid->Out = pid->MaxOut;
-    if (pid->Out < pid->MinOut) pid->Out = pid->MinOut;
+    if (pid->Out > pid->MaxOut) {
+        pid->Out = pid->MaxOut;
+    }
+    if (pid->Out < pid->MinOut) {
+        pid->Out = pid->MinOut;
+    }
 
-    // 6. 更新误差历史
     pid->PreErr = pid->LastErr;
     pid->LastErr = pid->Err;
 
+    return pid->Out;
+}
+
+float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps)
+{
+    pid->Err = pid->SetVal - pid->NowVal;
+
+    pid->Pout = pid->Kp * pid->Err;
+    /* Ignore tiny rate noise after bias removal */
+    if (fabsf(gyro_dps) < 1.0f) {
+        gyro_dps = 0.0f;
+    }
+    /* Oppose angular rate; GYRO_D_SIGN flips if mount/axis inverted */
+    pid->Dout = -GYRO_D_SIGN * pid->Kd * gyro_dps;
+
+    pid->Out = pid->Pout + pid->Dout;
+    if (pid->Out > pid->MaxOut) {
+        pid->Out = pid->MaxOut;
+    }
+    if (pid->Out < pid->MinOut) {
+        pid->Out = pid->MinOut;
+    }
+
+    pid->LastErr = pid->Err;
     return pid->Out;
 }

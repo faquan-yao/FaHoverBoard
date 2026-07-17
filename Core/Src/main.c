@@ -104,6 +104,9 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+  MotorInit();
+  /* MotorHwTest(); */ /* enable only when debugging motor wiring */
+
   HAL_Delay(100); /* MPU6050 power-up settle */
 
   /* Probe I2C: AD0=GND → 0xD0, AD0=VCC → 0xD2 (HAL 8-bit addr) */
@@ -125,40 +128,67 @@ int main(void)
   } while (ret);
   printf("MPU6050 Ready!\r\n");
 
-//  int i = 0;
-//  MotorInit();
-//  Enc_Init();
+  Enc_Init();
+  PID_Init();
+  printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f\r\n",
+		 ANGLE_MECH_ZERO, GYRO_BIAS);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  float roll, yaw, pitch;
+  float roll, yaw, pitch, gyro_dps;
+  float angle_trim = 0.0f;
+  float speed_filt = 0.0f;
+  int16_t duty_filt = 0;
+  uint32_t log_div = 0;
+  uint32_t speed_div = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  MPU6050_DMP_Get_Date(&pitch, &roll, &yaw);
-	  BalancePID.NowVal = pitch;
-	  float pid_balance = PID_Calc(&BalancePID);
-	  printf("%.2f, %.2f, %.2f, %.2f.\r\n", pitch, roll, yaw, pid_balance);
+	  if (MPU6050_DMP_Get_Date(&pitch, &roll, &yaw, &gyro_dps) != 0) {
+		  HAL_Delay(1);
+		  continue;
+	  }
+	  gyro_dps -= GYRO_BIAS;
 
-//	  int32_t left, right;
-//	  ENC_GetSpeeds(&left, &right);
-//	  printf(" %ld, %ld,", left, right);
-//	  SpeedPID.NowVal = left;
-//	  float pid_speed = PID_Calc(&SpeedPID);
-//	  printf("%.2f,", pid_speed);
-//	  int16_t duty = 7 * pid_balance + 3 * pid_speed;
-//	  printf(" %d\r\n", duty);
-//	  MotorControl(duty);
-      HAL_Delay(10);
+	  /* Speed loop ~10 Hz */
+	  if ((++speed_div % 10U) == 0U) {
+		  int32_t left, right;
+		  ENC_GetSpeeds(&left, &right);
+		  float spd = (float)(left + right) / 2.0f;
+		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
+		  SpeedPID.NowVal = speed_filt;
+		  SpeedPID.SetVal = 0.0f;
+		  angle_trim = PID_Calc(&SpeedPID);
+	  }
+
+	  BalancePID.SetVal = ANGLE_MECH_ZERO + SPEED_TRIM_SIGN * angle_trim;
+	  BalancePID.NowVal = pitch;
+	  float pid_balance = PID_BalanceGyro(&BalancePID, gyro_dps);
+
+	  int16_t duty = (int16_t)(12.0f * pid_balance);
+	  if (duty > 900) duty = 900;
+	  if (duty < -900) duty = -900;
+
+	  {
+		  const int16_t max_step = 35;
+		  int16_t d = (int16_t)(duty - duty_filt);
+		  if (d > max_step) d = max_step;
+		  if (d < -max_step) d = -max_step;
+		  duty_filt = (int16_t)(duty_filt + d);
+	  }
+
+	  MotorControl(duty_filt);
+
+	  if ((++log_div % 50U) == 0U) {
+		  printf("p=%.2f g=%.1f tgt=%.2f bal=%.2f duty=%d\r\n",
+				 pitch, gyro_dps, BalancePID.SetVal, pid_balance, duty_filt);
+	  }
+
 	  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
-//	  i++;
-//	  if (i >= 10) {
-//		  i = 0;
-//	  }
   }
   /* USER CODE END 3 */
 }

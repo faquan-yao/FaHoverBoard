@@ -8,6 +8,26 @@
 #ifndef INC_PID_BALANCE_H_
 #define INC_PID_BALANCE_H_
 
+/* Manual upright pitch (deg): hold car still, read serial p=, put that value here. */
+#ifndef ANGLE_MECH_ZERO
+#define ANGLE_MECH_ZERO  0.0f
+#endif
+
+/* Manual gyro bias (°/s) for pitch-rate D term. Usually 0 if DMP GYRO_CAL is OK. */
+#ifndef GYRO_BIAS
+#define GYRO_BIAS        0.0f
+#endif
+
+/* Speed→angle trim sign. Flip to +1.0f if car accelerates the wrong way. */
+#ifndef SPEED_TRIM_SIGN
+#define SPEED_TRIM_SIGN  (-1.0f)
+#endif
+
+/* Gyro D-term sign. Flip to -1.0f if damping makes it worse. */
+#ifndef GYRO_D_SIGN
+#define GYRO_D_SIGN      (1.0f)
+#endif
+
 // PID参数结构体
 typedef struct PID_TypeDef_Struct {
     // 基本参数
@@ -38,7 +58,8 @@ extern PID_TypeDef BalancePID; // 平衡环PID
 extern PID_TypeDef SpeedPID; // 速度环PID
 
 // 函数声明
-void PID_Init(void);            // PID参数初始化
-float PID_Calc(PID_TypeDef *pid);// PID计算
+void PID_Init(void);
+float PID_Calc(PID_TypeDef *pid);
+float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps);
 
 #endif /* INC_PID_BALANCE_H_ */

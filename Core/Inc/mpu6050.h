@@ -15,7 +15,14 @@
 #define DEFAULT_MPU_HZ  100
 #define Q30  1073741824.0f
 
+/* Gyro axis used as pitch rate after DMP orientation. Swap 0/1 if damping wrong. */
+#ifndef PITCH_GYRO_AXIS
+#define PITCH_GYRO_AXIS  1
+#endif
+
 int MPU6050_DMP_init(void);
-int MPU6050_DMP_Get_Date(float *pitch, float *roll, float *yaw);
+
+/* pitch/roll/yaw in deg; gyro_pitch_dps is angular rate for pitch damping */
+int MPU6050_DMP_Get_Date(float *pitch, float *roll, float *yaw, float *gyro_pitch_dps);
 
 #endif

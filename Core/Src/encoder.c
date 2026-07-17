@@ -97,7 +97,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 }
 
 void MPU_Update() {
-	float roll, yaw, pitch;
-	MPU6050_DMP_Get_Date(&pitch, &roll, &yaw);
+	float roll, yaw, pitch, gyro;
+	MPU6050_DMP_Get_Date(&pitch, &roll, &yaw, &gyro);
 	printf("%.2f, %.2f, %.2f.\r\n", pitch, roll, yaw);
 }
