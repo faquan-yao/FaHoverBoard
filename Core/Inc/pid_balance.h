@@ -23,6 +23,9 @@
 #define SPEED_TRIM_SIGN  (-1.0f)
 #endif
 
+/* Speed-loop target (output-shaft RPM). */
+extern float speed_target_rpm;
+
 /* Gyro D-term sign. Flip to -1.0f if damping makes it worse. */
 #ifndef GYRO_D_SIGN
 #define GYRO_D_SIGN      (1.0f)

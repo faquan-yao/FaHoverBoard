@@ -7,6 +7,9 @@
 #include "pid_balance.h"
 #include <math.h>
 
+/* Output-shaft RPM setpoint for SpeedPID (0 = hold still). */
+float speed_target_rpm = 0.0f;
+
 /*
  * Angle PD: u = Kp*err - Kd*gyro
  * Prefer gyro damping over d(error)/dt — much less rock near upright.
@@ -29,9 +32,10 @@ PID_TypeDef BalancePID = {
     .Out = 0.0f
 };
 
-/* Slow outer trim only — do not fight the angle loop */
+/* Slow outer trim only — do not fight the angle loop.
+ * NowVal unit: output-shaft RPM (was pulse_diff; Kp scaled by 56/3). */
 PID_TypeDef SpeedPID = {
-    .Kp = 0.008f,
+    .Kp = 0.149f,
     .Ki = 0.0f,
     .Kd = 0.0f,
     .MaxOut = 1.5f,

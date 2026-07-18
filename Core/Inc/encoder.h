@@ -16,16 +16,16 @@ typedef struct {
     int32_t last_count;
     int32_t total_overflow;
     int32_t diff;
+    int32_t total; /* cumulative pulses since Enc_Init / ENC_ResetTotals */
 } Encoder;
 
-static Encoder enc_left, enc_right;
-
-void Enc_Init();
-void LEFT_ENC_IRQHandler(void);
-void RIGHT_ENC_IRQHandler(void);
-int32_t Calculate_RPM(int32_t pulse_diff);
+void Enc_Init(void);
+float Calculate_RPM(int32_t pulse_diff);
 void ENC_UpdateSpeed(void);
-void ENC_GetSpeeds(int32_t *left_rpm, int32_t *right_rpm);
-void MPU_Update();
+void ENC_GetSpeeds(float *left_rpm, float *right_rpm);
+void ENC_GetPulseDiffs(int32_t *left_diff, int32_t *right_diff);
+void ENC_GetTotals(int32_t *left_total, int32_t *right_total);
+void ENC_GetRawCnt(uint32_t *left_cnt, uint32_t *right_cnt);
+void ENC_ResetTotals(void);
 
 #endif /* INC_ENCODER_H_ */

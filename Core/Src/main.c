@@ -29,6 +29,8 @@
 #include "mpu6050.h"
 #include "tb6612fng.h"
 #include "encoder.h"
+#include "encoder_test.h"
+#include "mpu6050_test.h"
 #include "pid_balance.h"
 
 /* USER CODE END Includes */
@@ -40,7 +42,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+/* Enable only one test at a time (both block and skip the balance loop). */
+#ifndef RUN_ENCODER_TEST
+#define RUN_ENCODER_TEST  0
+#endif
+#ifndef RUN_MPU_TEST
+#define RUN_MPU_TEST      0
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -107,6 +115,11 @@ int main(void)
   MotorInit();
   /* MotorHwTest(); */ /* enable only when debugging motor wiring */
 
+  Enc_Init();
+#if RUN_ENCODER_TEST
+  Enc_SelfTest(); /* UART count / rev / RPM — does not return */
+#endif
+
   HAL_Delay(100); /* MPU6050 power-up settle */
 
   /* Probe I2C: AD0=GND → 0xD0, AD0=VCC → 0xD2 (HAL 8-bit addr) */
@@ -128,7 +141,10 @@ int main(void)
   } while (ret);
   printf("MPU6050 Ready!\r\n");
 
-  Enc_Init();
+#if RUN_MPU_TEST
+  MPU_SelfTest(); /* UART: pitch, roll, yaw, gyro_dps — does not return */
+#endif
+
   PID_Init();
   printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f\r\n",
 		 ANGLE_MECH_ZERO, GYRO_BIAS);
@@ -154,14 +170,14 @@ int main(void)
 	  }
 	  gyro_dps -= GYRO_BIAS;
 
-	  /* Speed loop ~10 Hz */
+	  /* Speed loop ~10 Hz, feedback in output-shaft RPM */
 	  if ((++speed_div % 10U) == 0U) {
-		  int32_t left, right;
-		  ENC_GetSpeeds(&left, &right);
-		  float spd = (float)(left + right) / 2.0f;
+		  float left_rpm, right_rpm;
+		  ENC_GetSpeeds(&left_rpm, &right_rpm);
+		  float spd = (left_rpm + right_rpm) / 2.0f;
 		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
 		  SpeedPID.NowVal = speed_filt;
-		  SpeedPID.SetVal = 0.0f;
+		  SpeedPID.SetVal = speed_target_rpm;
 		  angle_trim = PID_Calc(&SpeedPID);
 	  }
 
