@@ -14,25 +14,27 @@ STM32F103 平衡车固件（双环：速度环 + 角度平衡环）。
 
 ## 运行模式切换
 
-在 `Core/Src/main.c` 中配置（**同一时间只开一种自检**）：
+在 `Core/Src/main.c` 中配置（**同一时间只开一种自检/校准**）：
 
 ```c
 #define RUN_ENCODER_TEST  0   /* 1 = 编码器自检（不进入平衡环） */
-#define RUN_MPU_TEST      0   /* 1 = MPU6050 自检（不进入平衡环） */
+#define RUN_MPU_TEST      0   /* 1 = MPU6050 姿态自检 */
+#define RUN_ACCEL_CAL     0   /* 1 = 加速度计六面校准并写入 Flash */
 ```
 
 | 模式 | 宏设置 | 行为 |
 |------|--------|------|
-| 正常平衡 | 两者均为 `0` | 初始化后进入平衡控制循环 |
-| 编码器自检 | `RUN_ENCODER_TEST = 1` | 调用 `Enc_SelfTest()`，不返回 |
-| MPU 自检 | `RUN_MPU_TEST = 1` | DMP 就绪后调用 `MPU_SelfTest()`，不返回 |
+| 正常平衡 | 三者均为 `0` | 初始化后进入平衡控制；若 Flash 有有效校准则自动加载 |
+| 编码器自检 | `RUN_ENCODER_TEST = 1` | `Enc_SelfTest()`，不返回 |
+| MPU 自检 | `RUN_MPU_TEST = 1` | `MPU_SelfTest()`，不返回 |
+| 六面校准 | `RUN_ACCEL_CAL = 1` | `AccelCal_SelfTest()`，校准后写入 Flash，不返回 |
 
-测完后务必将对应宏改回 `0`，再编译下载。
+测完/校完后务必将对应宏改回 `0`，再编译下载。
 
 初始化顺序（与 `main.c` 一致）：
 
 1. 电机 / 编码器初始化 →（可选）编码器自检  
-2. MPU6050 I2C 探测 + DMP 初始化 →（可选）MPU 自检  
+2. MPU6050 I2C 探测 + DMP 初始化（自动尝试加载 Flash 加速度校准）→（可选）MPU 自检 / 六面校准  
 3. PID 初始化 → 平衡主循环  
 
 ---
@@ -111,6 +113,43 @@ STM32F103 平衡车固件（双环：速度环 + 角度平衡环）。
 
 - `ENC_GetRawCnt` / `ENC_GetTotals` / `ENC_ResetTotals`
 - `ENC_GetPulseDiffs` / `ENC_GetSpeeds`（输出轴 RPM）
+
+---
+
+## 加速度计六面校准
+
+对 MPU6050 加速度计做六面（±X/±Y/±Z）静态校准，结果写入片内 Flash **掉电保存**，之后每次上电 DMP 初始化时自动加载并应用到硬件/DMP 偏置。
+
+- 实现：`Core/Src/accel_cal.c`、`Core/Inc/accel_cal.h`
+- Flash：`Core/Src/flash_storage.c`（末页 `0x0807F800`，2KB）
+- 默认：**不启用**（`RUN_ACCEL_CAL = 0`）
+
+### 开启步骤
+
+1. `RUN_ENCODER_TEST = 0`，`RUN_MPU_TEST = 0`，`RUN_ACCEL_CAL = 1`
+2. 编译下载，串口 115200
+3. 按提示依次将模块六个面朝上（或按提示方向）平放静止；每面倒计时 5 s 后采样约 2 s
+4. 成功后打印 `Saved to flash OK` 与 bias/scale，并尝试写入 MPU
+5. 将 `RUN_ACCEL_CAL` 改回 **0**，重新编译下载进入正常模式（会自动 `AccelCal_ApplyToMpu()`）
+
+### 六面顺序
+
+| 顺序 | 提示 | 期望 |
+|------|------|------|
+| 1 | Z-up | `az ≈ +1g` |
+| 2 | Z-down | `az ≈ -1g` |
+| 3 | Y-up | `ay ≈ +1g` |
+| 4 | Y-down | `ay ≈ -1g` |
+| 5 | X-up | `ax ≈ +1g` |
+| 6 | X-down | `ax ≈ -1g` |
+
+计算：`bias = (pos+neg)/2`，`scale = 2/(pos-neg)`（按轴）。带 magic + CRC32 校验。
+
+### 注意
+
+- 校准过程需**平稳、对准**，否则 `face span too small` 失败
+- 正常运行时若 Flash 无有效记录，跳过加载（不影响启动）
+- 缩放主要用于软校正 API `AccelCal_Correct()`；写入 MPU 的主要是 **bias**
 
 ---
 

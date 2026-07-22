@@ -1,4 +1,5 @@
 #include "mpu6050.h"
+#include "accel_cal.h"
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "math.h"
@@ -150,6 +151,8 @@ int MPU6050_DMP_init(void)
     {
         /* keep going; GYRO_CAL still corrects bias when stationary */
     }
+    /* Load six-face accel cal from flash (if present) and push to HW/DMP */
+    (void)AccelCal_ApplyToMpu();
     //使能DMP
     ret = mpu_set_dmp_state(1);
     if(ret != 0)

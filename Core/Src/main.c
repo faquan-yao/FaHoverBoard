@@ -31,6 +31,7 @@
 #include "encoder.h"
 #include "encoder_test.h"
 #include "mpu6050_test.h"
+#include "accel_cal.h"
 #include "pid_balance.h"
 
 /* USER CODE END Includes */
@@ -42,12 +43,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-/* Enable only one test at a time (both block and skip the balance loop). */
+/* Enable only one test/cal mode at a time (blocks and skips balance loop). */
 #ifndef RUN_ENCODER_TEST
 #define RUN_ENCODER_TEST  0
 #endif
 #ifndef RUN_MPU_TEST
-#define RUN_MPU_TEST      0
+#define RUN_MPU_TEST      1
+#endif
+#ifndef RUN_ACCEL_CAL
+#define RUN_ACCEL_CAL     0   /* 1 = MPU6050 six-face accel calibration */
 #endif
 /* USER CODE END PD */
 
@@ -144,6 +148,9 @@ int main(void)
 #if RUN_MPU_TEST
   MPU_SelfTest(); /* UART: pitch, roll, yaw, gyro_dps — does not return */
 #endif
+#if RUN_ACCEL_CAL
+  AccelCal_SelfTest(); /* six-face cal → flash — does not return */
+#endif
 
   PID_Init();
   printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f\r\n",
@@ -159,6 +166,8 @@ int main(void)
   int16_t duty_filt = 0;
   uint32_t log_div = 0;
   uint32_t speed_div = 0;
+  (void)speed_filt;  /* used when speed loop is enabled */
+  (void)speed_div;
   while (1)
   {
     /* USER CODE END WHILE */
