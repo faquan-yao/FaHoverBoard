@@ -171,21 +171,21 @@ int main(void)
 	  gyro_dps -= GYRO_BIAS;
 
 	  /* Speed loop ~10 Hz, feedback in output-shaft RPM */
-	  if ((++speed_div % 10U) == 0U) {
-		  float left_rpm, right_rpm;
-		  ENC_GetSpeeds(&left_rpm, &right_rpm);
-		  float spd = (left_rpm + right_rpm) / 2.0f;
-		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
-		  SpeedPID.NowVal = speed_filt;
-		  SpeedPID.SetVal = speed_target_rpm;
-		  angle_trim = PID_Calc(&SpeedPID);
-	  }
+//	  if ((++speed_div % 10U) == 0U) {
+//		  float left_rpm, right_rpm;
+//		  ENC_GetSpeeds(&left_rpm, &right_rpm);
+//		  float spd = (left_rpm + right_rpm) / 2.0f;
+//		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
+//		  SpeedPID.NowVal = speed_filt;
+//		  SpeedPID.SetVal = speed_target_rpm;
+//		  angle_trim = PID_Calc(&SpeedPID);
+//	  }
 
 	  BalancePID.SetVal = ANGLE_MECH_ZERO + SPEED_TRIM_SIGN * angle_trim;
 	  BalancePID.NowVal = pitch;
 	  float pid_balance = PID_BalanceGyro(&BalancePID, gyro_dps);
 
-	  int16_t duty = (int16_t)(12.0f * pid_balance);
+	  int16_t duty = (int16_t)(8.0f * pid_balance);
 	  if (duty > 900) duty = 900;
 	  if (duty < -900) duty = -900;
 
