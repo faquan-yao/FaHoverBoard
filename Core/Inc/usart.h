@@ -42,6 +42,8 @@ void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 void UartTx_IRQHandler(void);
+void UartRx_Start(void);
+int UartRx_Read(uint8_t *byte);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

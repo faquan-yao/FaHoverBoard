@@ -102,6 +102,16 @@ float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps)
     pid->Err = pid->SetVal - pid->NowVal;
 
     pid->Pout = pid->Kp * pid->Err;
+
+    /* Ki stays 0 until VOFA writes it, so the upright loop is unchanged. */
+    pid->Iout += pid->Ki * pid->Err;
+    if (pid->Iout > pid->MaxI) {
+        pid->Iout = pid->MaxI;
+    }
+    if (pid->Iout < -pid->MaxI) {
+        pid->Iout = -pid->MaxI;
+    }
+
     /* Ignore tiny rate noise after bias removal */
     if (fabsf(gyro_dps) < 0.5f) {
         gyro_dps = 0.0f;
@@ -109,7 +119,7 @@ float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps)
     /* Oppose angular rate; GYRO_D_SIGN flips if mount/axis inverted */
     pid->Dout = -GYRO_D_SIGN * pid->Kd * gyro_dps;
 
-    pid->Out = pid->Pout + pid->Dout;
+    pid->Out = pid->Pout + pid->Iout + pid->Dout;
     if (pid->Out > pid->MaxOut) {
         pid->Out = pid->MaxOut;
     }

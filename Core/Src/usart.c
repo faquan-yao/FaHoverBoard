@@ -23,6 +23,8 @@
 /* USER CODE BEGIN 0 */
 #include <string.h>
 
+static void UartRx_Push(uint8_t byte);
+
 /* TX ring: printf writes here, USART1 TXE IRQ drains it.
  * Keep one slot empty so w==r means empty. Never drop bytes. */
 #ifndef UART_TX_BUF_SIZE
@@ -92,7 +94,10 @@ void UartTx_IRQHandler(void)
 			uart_tx_r = r;
 		}
 	}
-	if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_ORE)) {
+	/* RXNE read of DR also clears ORE once SR has been read. */
+	if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+		UartRx_Push((uint8_t)(huart1.Instance->DR & 0xFFU));
+	} else if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_ORE)) {
 		__HAL_UART_CLEAR_OREFLAG(&huart1);
 	}
 }
@@ -115,6 +120,47 @@ int _write(int file, char *ptr, int len)
 		remain -= (int)chunk;
 	}
 	return len;
+}
+
+/* RX ring for VOFA+ commands. IRQ pushes, main pops. One slot stays empty. */
+#ifndef UART_RX_BUF_SIZE
+#define UART_RX_BUF_SIZE  128U
+#endif
+
+static uint8_t uart_rx_buf[UART_RX_BUF_SIZE];
+static volatile uint16_t uart_rx_w;
+static volatile uint16_t uart_rx_r;
+
+static void UartRx_Push(uint8_t byte)
+{
+	uint16_t next = (uint16_t)(uart_rx_w + 1U);
+	if (next >= UART_RX_BUF_SIZE) {
+		next = 0U;
+	}
+	if (next == uart_rx_r) {
+		return;
+	}
+	uart_rx_buf[uart_rx_w] = byte;
+	uart_rx_w = next;
+}
+
+void UartRx_Start(void)
+{
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+}
+
+int UartRx_Read(uint8_t *byte)
+{
+	if (uart_rx_r == uart_rx_w) {
+		return 0;
+	}
+	*byte = uart_rx_buf[uart_rx_r];
+	uint16_t r = (uint16_t)(uart_rx_r + 1U);
+	if (r >= UART_RX_BUF_SIZE) {
+		r = 0U;
+	}
+	uart_rx_r = r;
+	return 1;
 }
 /* USER CODE END 0 */
 

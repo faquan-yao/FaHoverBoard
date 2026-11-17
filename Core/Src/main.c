@@ -162,6 +162,7 @@ int main(void)
 
   PID_Init();
   MotorShutdown();
+  Vofa_PidTune_Init();
   printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f FALL=%.0f\r\n",
 		 ANGLE_MECH_ZERO, GYRO_BIAS, FALL_ANGLE_DEG);
 
@@ -186,6 +187,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  Vofa_PidTune_Poll();
 	  if (MPU6050_DMP_Get_Date(&pitch, &roll, &yaw, &gyro_dps) != 0) {
 		  if ((HAL_GetTick() - last_imu_ms) > IMU_FAIL_KILL_MS) {
 			  if (!fallen) {
