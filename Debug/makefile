@@ -13,6 +13,7 @@ RM := rm -rf
 -include Drivers/BSP/Mpu6050/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
+-include Application/subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)

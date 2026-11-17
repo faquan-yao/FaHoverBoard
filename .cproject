@@ -70,6 +70,7 @@
 									<listOptionValue builtIn="false" value="../Middlewares/ST/STM32_MotionPW_Library/Inc"/>
 									<listOptionValue builtIn="false" value="../Middlewares/ST/STM32_MotionTL_Library/Inc"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/BSP/Mpu6050}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Application}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.2015918108" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -195,6 +196,7 @@
 									<listOptionValue builtIn="false" value="../Middlewares/ST/STM32_MotionPM_Library/Inc"/>
 									<listOptionValue builtIn="false" value="../Middlewares/ST/STM32_MotionPW_Library/Inc"/>
 									<listOptionValue builtIn="false" value="../Middlewares/ST/STM32_MotionTL_Library/Inc"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Application}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1818741645" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>

@@ -15,11 +15,11 @@ float speed_target_rpm = 0.0f;
  * Prefer gyro damping over d(error)/dt — much less rock near upright.
  */
 PID_TypeDef BalancePID = {
-    .Kp = 1.6f,
+    .Kp = 3.9f,
     .Ki = 0.0f,
     .Kd = 0.25f,    /* on gyro °/s, not on angle difference */
-    .MaxOut = 45.0f,
-    .MinOut = -45.0f,
+    .MaxOut = 100.0f,
+    .MinOut = -100.0f,
     .MaxI = 3.0f,
     .SetVal = 0.0f,
     .NowVal = 0.0f,
@@ -35,12 +35,12 @@ PID_TypeDef BalancePID = {
 /* Slow outer trim only — do not fight the angle loop.
  * NowVal unit: output-shaft RPM (was pulse_diff; Kp scaled by 56/3). */
 PID_TypeDef SpeedPID = {
-    .Kp = 0.149f,
-    .Ki = 0.0f,
-    .Kd = 0.0f,
-    .MaxOut = 1.5f,
-    .MinOut = -1.5f,
-    .MaxI = 1.0f,
+    .Kp = 0.17f,     /* 0: tune angle loop first; then try 0.04f */
+    .Ki = 0.005f,
+    .Kd = 0.02f,
+    .MaxOut = 10.0f,
+    .MinOut = -10.0f,
+    .MaxI = 5.0f,
     .SetVal = 0.0f,
     .NowVal = 0.0f,
     .Err = 0.0f,
@@ -103,7 +103,7 @@ float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps)
 
     pid->Pout = pid->Kp * pid->Err;
     /* Ignore tiny rate noise after bias removal */
-    if (fabsf(gyro_dps) < 0.8f) {
+    if (fabsf(gyro_dps) < 0.5f) {
         gyro_dps = 0.0f;
     }
     /* Oppose angular rate; GYRO_D_SIGN flips if mount/axis inverted */

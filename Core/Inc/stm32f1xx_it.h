@@ -59,7 +59,7 @@ void TIM3_IRQHandler(void);
 void TIM5_IRQHandler(void);
 void TIM6_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-
+void USART1_IRQHandler(void);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

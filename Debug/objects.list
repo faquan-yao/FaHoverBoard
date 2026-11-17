@@ -1,3 +1,4 @@
+"./Application/Vofa.o"
 "./Core/Src/accel_cal.o"
 "./Core/Src/encoder.o"
 "./Core/Src/encoder_test.o"

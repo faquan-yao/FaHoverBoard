@@ -24,6 +24,7 @@ typedef enum {
 void MotorInit(void);
 void MotorHwTest(void);
 void MotorControl(int16_t speed);
+void MotorShutdown(void);
 void MotorAControl(MotorState state, uint16_t speed);
 void MotorBControl(MotorState state, uint16_t speed);
 

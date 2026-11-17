@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include "math.h"
 #include "mpu6050.h"
 #include "tb6612fng.h"
 #include "encoder.h"
@@ -33,6 +34,7 @@
 #include "mpu6050_test.h"
 #include "accel_cal.h"
 #include "pid_balance.h"
+#include "Vofa.h"
 
 /* USER CODE END Includes */
 
@@ -48,7 +50,7 @@
 #define RUN_ENCODER_TEST  0
 #endif
 #ifndef RUN_MPU_TEST
-#define RUN_MPU_TEST      1
+#define RUN_MPU_TEST      0
 #endif
 #ifndef RUN_ACCEL_CAL
 #define RUN_ACCEL_CAL     0   /* 1 = MPU6050 six-face accel calibration */
@@ -73,9 +75,14 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int __io_putchar(int ch) {
-	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 1000);
-	return ch;
+static void Balance_CutAndReset(float *angle_trim, float *speed_filt, float *gyro_filt, int16_t *duty_filt)
+{
+	PID_Init();
+	*angle_trim = 0.0f;
+	*speed_filt = 0.0f;
+	*gyro_filt = 0.0f;
+	*duty_filt = 0;
+	MotorShutdown();
 }
 /* USER CODE END 0 */
 
@@ -117,6 +124,7 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   MotorInit();
+  MotorShutdown(); /* keep driver off until balance loop recovers upright */
   /* MotorHwTest(); */ /* enable only when debugging motor wiring */
 
   Enc_Init();
@@ -153,8 +161,9 @@ int main(void)
 #endif
 
   PID_Init();
-  printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f\r\n",
-		 ANGLE_MECH_ZERO, GYRO_BIAS);
+  MotorShutdown();
+  printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f FALL=%.0f\r\n",
+		 ANGLE_MECH_ZERO, GYRO_BIAS, FALL_ANGLE_DEG);
 
   /* USER CODE END 2 */
 
@@ -163,9 +172,13 @@ int main(void)
   float roll, yaw, pitch, gyro_dps;
   float angle_trim = 0.0f;
   float speed_filt = 0.0f;
+  float gyro_filt = 0.0f;
   int16_t duty_filt = 0;
   uint32_t log_div = 0;
   uint32_t speed_div = 0;
+  uint8_t fallen = 1; /* start cut off until upright and settled */
+  uint32_t last_imu_ms = HAL_GetTick();
+  uint32_t recover_ok_ms = 0;
   (void)speed_filt;  /* used when speed loop is enabled */
   (void)speed_div;
   while (1)
@@ -174,44 +187,88 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  if (MPU6050_DMP_Get_Date(&pitch, &roll, &yaw, &gyro_dps) != 0) {
+		  if ((HAL_GetTick() - last_imu_ms) > IMU_FAIL_KILL_MS) {
+			  if (!fallen) {
+				  fallen = 1;
+				  recover_ok_ms = 0;
+				  printf("IMU timeout, motors off\r\n");
+			  }
+			  Balance_CutAndReset(&angle_trim, &speed_filt, &gyro_filt, &duty_filt);
+		  }
 		  HAL_Delay(1);
 		  continue;
 	  }
+	  last_imu_ms = HAL_GetTick();
+//	  Vofa_Send_IMU(pitch, roll, yaw);
 	  gyro_dps -= GYRO_BIAS;
+	  gyro_filt = (1.0f - GYRO_LPF_ALPHA) * gyro_filt + GYRO_LPF_ALPHA * gyro_dps;
+	  {
+		  float ang_err = fabsf(pitch - ANGLE_MECH_ZERO);
+		  if (!fallen) {
+			  if (ang_err > FALL_ANGLE_DEG) {
+				  fallen = 1;
+				  recover_ok_ms = 0;
+				  Balance_CutAndReset(&angle_trim, &speed_filt, &gyro_filt, &duty_filt);
+				  printf("Fallen, motors off pitch=%.2f\r\n", pitch);
+			  }
+		  } else if (ang_err < RECOVER_ANGLE_DEG && fabsf(gyro_dps) < RECOVER_GYRO_DPS) {
+			  if (recover_ok_ms == 0U) {
+				  recover_ok_ms = HAL_GetTick();
+			  }
+			  if ((HAL_GetTick() - recover_ok_ms) >= RECOVER_HOLD_MS) {
+				  fallen = 0;
+				  recover_ok_ms = 0;
+				  PID_Init();
+				  angle_trim = 0.0f;
+				  speed_filt = 0.0f;
+				  duty_filt = 0;
+				  printf("Recovered, motors on pitch=%.2f\r\n", pitch);
+			  }
+		  } else {
+			  recover_ok_ms = 0;
+		  }
+	  }
+
+	  if (fallen) {
+		  MotorShutdown();
+		  if ((++log_div % 10U) == 0U) {
+			  printf("%.2f,%.2f,0,0\r\n", pitch, ANGLE_MECH_ZERO);
+		  }
+		  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
+		  continue;
+	  }
 
 	  /* Speed loop ~10 Hz, feedback in output-shaft RPM */
-//	  if ((++speed_div % 10U) == 0U) {
-//		  float left_rpm, right_rpm;
-//		  ENC_GetSpeeds(&left_rpm, &right_rpm);
-//		  float spd = (left_rpm + right_rpm) / 2.0f;
-//		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
-//		  SpeedPID.NowVal = speed_filt;
-//		  SpeedPID.SetVal = speed_target_rpm;
-//		  angle_trim = PID_Calc(&SpeedPID);
-//	  }
-
+	  if ((++speed_div % 10U) == 0U) {
+		  float left_rpm, right_rpm;
+		  ENC_GetSpeeds(&left_rpm, &right_rpm);
+		  //两个轮子由于是对向安装的，他们的速度方向是相反的，求和应该是（left_rpm + (-right_rpm)）/ 2.0,化简之后如下
+		  float spd = (left_rpm - right_rpm) / 2.0f;
+		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
+//		  Vofa_Send_Filt_Data(spd, speed_filt);
+		  SpeedPID.NowVal = speed_filt;
+		  SpeedPID.SetVal = speed_target_rpm;
+		  angle_trim = PID_Calc(&SpeedPID);
+	  }
 	  BalancePID.SetVal = ANGLE_MECH_ZERO + SPEED_TRIM_SIGN * angle_trim;
 	  BalancePID.NowVal = pitch;
-	  float pid_balance = PID_BalanceGyro(&BalancePID, gyro_dps);
+	  float pid_balance = PID_BalanceGyro(&BalancePID, /*gyro_filt*/0);
 
-	  int16_t duty = (int16_t)(8.0f * pid_balance);
-	  if (duty > 900) duty = 900;
-	  if (duty < -900) duty = -900;
+	  float vofa_pid_data[] = {BalancePID.SetVal, BalancePID.NowVal, gyro_filt, pid_balance};
+	  Vofa_JustFloat_Send(4, vofa_pid_data);
 
-	  {
-		  const int16_t max_step = 35;
-		  int16_t d = (int16_t)(duty - duty_filt);
-		  if (d > max_step) d = max_step;
-		  if (d < -max_step) d = -max_step;
-		  duty_filt = (int16_t)(duty_filt + d);
-	  }
+	  int16_t duty = (int16_t)(MOTOR_CMD_SIGN * 9.0f * pid_balance);
 
-	  MotorControl(duty_filt);
+	  duty_filt = 0.8f * duty_filt + 0.2f * duty;
 
-	  if ((++log_div % 50U) == 0U) {
-		  printf("p=%.2f g=%.1f tgt=%.2f bal=%.2f duty=%d\r\n",
-				 pitch, gyro_dps, BalancePID.SetVal, pid_balance, duty_filt);
-	  }
+	  float duty_output = duty_filt;
+	  if (duty_output > 900) duty_output = 900;
+	  if (duty_output < -900) duty_output = -900;
+
+	  MotorControl(duty_output);
+
+//	  float vofa_data[3] = {pitch, speed_filt, duty_output};
+//	  Vofa_JustFloat_Send(3, vofa_data);
 
 	  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
   }

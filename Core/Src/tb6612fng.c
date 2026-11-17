@@ -92,9 +92,21 @@ void MotorHwTest(void)
 	printf("Motor DC test done.\r\n");
 }
 
+void MotorShutdown(void)
+{
+	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+	HAL_GPIO_WritePin(AIN1_GPIO_Port, AIN1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(AIN2_GPIO_Port, AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(BIN1_GPIO_Port, BIN1_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(BIN2_GPIO_Port, BIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(STBY_GPIO_Port, STBY_Pin, GPIO_PIN_RESET);
+}
+
 void MotorControl(int16_t speed)
 {
 	uint16_t pwm = (uint16_t)abs((int)speed);
+
 	if (pwm > 1000) {
 		pwm = 1000;
 	}
@@ -121,7 +133,7 @@ void MotorControl(int16_t speed)
 		dir_b = MOTOR_CW;
 	}
 #endif
-
+	printf(" %d", pwm);
 	MotorAControl(dir_a, pwm);
 	MotorBControl(dir_b, pwm);
 }

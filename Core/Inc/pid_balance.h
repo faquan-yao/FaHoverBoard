@@ -10,7 +10,7 @@
 
 /* Manual upright pitch (deg): hold car still, read serial p=, put that value here. */
 #ifndef ANGLE_MECH_ZERO
-#define ANGLE_MECH_ZERO  0.0f
+#define ANGLE_MECH_ZERO  0.58f
 #endif
 
 /* Manual gyro bias (°/s) for pitch-rate D term. Usually 0 if DMP GYRO_CAL is OK. */
@@ -18,9 +18,21 @@
 #define GYRO_BIAS        0.0f
 #endif
 
+/* First-order LPF on gyro before D-term / recover. Weight on new sample.
+ * DMP ~100 Hz: 0.3 ≈ 7 Hz. Raise if damping feels laggy, lower if noisy. */
+#ifndef GYRO_LPF_ALPHA
+#define GYRO_LPF_ALPHA   0.1f
+#endif
+
 /* Speed→angle trim sign. Flip to +1.0f if car accelerates the wrong way. */
 #ifndef SPEED_TRIM_SIGN
 #define SPEED_TRIM_SIGN  (-1.0f)
+#endif
+
+/* +1: duty = +gain*bal; -1: invert motor command.
+ * 2026-08-20_17-53 CSV: MOTOR_CMD_SIGN=-1 left pitch stuck ~-1° then tipped — revert to +1. */
+#ifndef MOTOR_CMD_SIGN
+#define MOTOR_CMD_SIGN   (1.0f)
 #endif
 
 /* Speed-loop target (output-shaft RPM). */
@@ -29,6 +41,23 @@ extern float speed_target_rpm;
 /* Gyro D-term sign. Flip to -1.0f if damping makes it worse. */
 #ifndef GYRO_D_SIGN
 #define GYRO_D_SIGN      (1.0f)
+#endif
+
+/* Fall cut-out vs mechanical zero. Recover uses hysteresis + hold time. */
+#ifndef FALL_ANGLE_DEG
+#define FALL_ANGLE_DEG     30.0f
+#endif
+#ifndef RECOVER_ANGLE_DEG
+#define RECOVER_ANGLE_DEG  10.0f
+#endif
+#ifndef RECOVER_GYRO_DPS
+#define RECOVER_GYRO_DPS   20.0f
+#endif
+#ifndef RECOVER_HOLD_MS
+#define RECOVER_HOLD_MS    300U
+#endif
+#ifndef IMU_FAIL_KILL_MS
+#define IMU_FAIL_KILL_MS   50U
 #endif
 
 // PID参数结构体
