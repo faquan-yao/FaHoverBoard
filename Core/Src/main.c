@@ -200,7 +200,6 @@ int main(void)
 		  continue;
 	  }
 	  last_imu_ms = HAL_GetTick();
-//	  Vofa_Send_IMU(pitch, roll, yaw);
 	  gyro_dps -= GYRO_BIAS;
 	  gyro_filt = (1.0f - GYRO_LPF_ALPHA) * gyro_filt + GYRO_LPF_ALPHA * gyro_dps;
 	  {

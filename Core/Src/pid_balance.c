@@ -15,9 +15,9 @@ float speed_target_rpm = 0.0f;
  * Prefer gyro damping over d(error)/dt — much less rock near upright.
  */
 PID_TypeDef BalancePID = {
-    .Kp = 20.0f,
+    .Kp = 32.5f,
     .Ki = 0.0f,
-    .Kd = 0.0f,    /* on gyro °/s, not on angle difference */
+    .Kd = 0.531f,    /* on gyro °/s, not on angle difference */
     .MaxOut = 900.0f,
     .MinOut = -900.0f,
     .MaxI = 3.0f,
