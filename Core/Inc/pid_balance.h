@@ -21,12 +21,12 @@
 /* First-order LPF on gyro before D-term / recover. Weight on new sample.
  * DMP ~100 Hz: 0.3 ≈ 7 Hz. Raise if damping feels laggy, lower if noisy. */
 #ifndef GYRO_LPF_ALPHA
-#define GYRO_LPF_ALPHA   0.1f
+#define GYRO_LPF_ALPHA   0.4f
 #endif
 
 /* Speed→angle trim sign. Flip to +1.0f if car accelerates the wrong way. */
 #ifndef SPEED_TRIM_SIGN
-#define SPEED_TRIM_SIGN  (-1.0f)
+#define SPEED_TRIM_SIGN  (1.0f)
 #endif
 
 /* +1: duty = +gain*bal; -1: invert motor command.
@@ -40,7 +40,7 @@ extern float speed_target_rpm;
 
 /* Gyro D-term sign. Flip to -1.0f if damping makes it worse. */
 #ifndef GYRO_D_SIGN
-#define GYRO_D_SIGN      (1.0f)
+#define GYRO_D_SIGN      (-1.0f)
 #endif
 
 /* Fall cut-out vs mechanical zero. Recover uses hysteresis + hold time. */

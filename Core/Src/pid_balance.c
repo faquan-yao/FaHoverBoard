@@ -15,11 +15,11 @@ float speed_target_rpm = 0.0f;
  * Prefer gyro damping over d(error)/dt — much less rock near upright.
  */
 PID_TypeDef BalancePID = {
-    .Kp = 3.9f,
+    .Kp = 20.0f,
     .Ki = 0.0f,
-    .Kd = 0.25f,    /* on gyro °/s, not on angle difference */
-    .MaxOut = 100.0f,
-    .MinOut = -100.0f,
+    .Kd = 0.0f,    /* on gyro °/s, not on angle difference */
+    .MaxOut = 900.0f,
+    .MinOut = -900.0f,
     .MaxI = 3.0f,
     .SetVal = 0.0f,
     .NowVal = 0.0f,
@@ -117,7 +117,7 @@ float PID_BalanceGyro(PID_TypeDef *pid, float gyro_dps)
         gyro_dps = 0.0f;
     }
     /* Oppose angular rate; GYRO_D_SIGN flips if mount/axis inverted */
-    pid->Dout = -GYRO_D_SIGN * pid->Kd * gyro_dps;
+    pid->Dout = GYRO_D_SIGN * pid->Kd * gyro_dps;
 
     pid->Out = pid->Pout + pid->Iout + pid->Dout;
     if (pid->Out > pid->MaxOut) {

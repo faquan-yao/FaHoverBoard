@@ -11,8 +11,8 @@
 #include "math.h"
 #include "usart.h"
 #include "pid_balance.h"
+#include "log.h"
 
-// 改成你自己的串口句柄，比如 huart2
 #define VOFA_UART_HANDLE    huart1
 
 /**
@@ -175,7 +175,7 @@ static void Vofa_SetSymOut(PID_TypeDef *pid, float v)
 
 static void Vofa_PrintPid(void)
 {
-	printf("BK=%.3f BI=%.3f BD=%.3f BMAX=%.1f BILIM=%.2f "
+	Log(LOG_INFO, "BK=%.3f BI=%.3f BD=%.3f BMAX=%.1f BILIM=%.2f "
 	       "SK=%.3f SI=%.3f SD=%.3f SMAX=%.1f SILIM=%.2f ST=%.2f\r\n",
 	       BalancePID.Kp, BalancePID.Ki, BalancePID.Kd,
 	       BalancePID.MaxOut, BalancePID.MaxI,

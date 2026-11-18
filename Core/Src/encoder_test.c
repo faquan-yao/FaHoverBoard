@@ -10,7 +10,7 @@
 #include "hardware_cfg.h"
 #include "tb6612fng.h"
 #include "main.h"
-#include <stdio.h>
+#include "log.h"
 #include <stdlib.h>
 
 /* PWM compare uses 0..1000 in MotorA/BControl */
@@ -78,7 +78,7 @@ static void ENC_PrintStatus(const char *tag)
 	float rev_l = (float)total_l / (float)ENC_PULSES_PER_OUT_REV;
 	float rev_r = (float)total_r / (float)ENC_PULSES_PER_OUT_REV;
 
-	printf("[%s] L: cnt=%lu total=%ld d=%ld rev=%+.3f %s rpm=%+.1f | "
+	Log(LOG_INFO, "[%s] L: cnt=%lu total=%ld d=%ld rev=%+.3f %s rpm=%+.1f | "
 	       "R: cnt=%lu total=%ld d=%ld rev=%+.3f %s rpm=%+.1f\r\n",
 	       tag,
 	       (unsigned long)cnt_l, (long)total_l, (long)diff_l,
@@ -105,7 +105,7 @@ static int ENC_DriveUntilPulses(const char *tag,
 	HAL_Delay(30);
 	ENC_GetTotals(&start_l, &start_r);
 
-	printf("%s start: target=%ld pulses/out-rev duty=%u%% pwm=%u\r\n",
+	Log(LOG_INFO, "%s start: target=%ld pulses/out-rev duty=%u%% pwm=%u\r\n",
 	       tag, (long)target_pulses, (unsigned)ENC_TEST_DUTY_PCT,
 	       (unsigned)ENC_TEST_PWM);
 
@@ -121,7 +121,7 @@ static int ENC_DriveUntilPulses(const char *tag,
 		if (left_en && !left_done) {
 			if (labs((long)(total_l - start_l)) >= (long)target_pulses) {
 				left_done = 1;
-				printf("%s left done delta=%ld\r\n",
+				Log(LOG_INFO, "%s left done delta=%ld\r\n",
 				       tag, (long)(total_l - start_l));
 			} else {
 				ldir = left_dir;
@@ -131,7 +131,7 @@ static int ENC_DriveUntilPulses(const char *tag,
 		if (right_en && !right_done) {
 			if (labs((long)(total_r - start_r)) >= (long)target_pulses) {
 				right_done = 1;
-				printf("%s right done delta=%ld\r\n",
+				Log(LOG_INFO, "%s right done delta=%ld\r\n",
 				       tag, (long)(total_r - start_r));
 			} else {
 				rdir = right_dir;
@@ -148,7 +148,7 @@ static int ENC_DriveUntilPulses(const char *tag,
 
 		if (elapsed >= ENC_TEST_TIMEOUT_MS) {
 			ENC_MotorsStop();
-			printf("%s TIMEOUT after %lums (left_done=%d right_done=%d)\r\n",
+			Log(LOG_ERROR, "%s TIMEOUT after %lums (left_done=%d right_done=%d)\r\n",
 			       tag, (unsigned long)elapsed, left_done, right_done);
 			return -1;
 		}
@@ -156,43 +156,43 @@ static int ENC_DriveUntilPulses(const char *tag,
 
 	ENC_MotorsStop();
 	ENC_PrintStatus(tag);
-	printf("%s OK\r\n\r\n", tag);
+	Log(LOG_INFO, "%s OK\r\n\r\n", tag);
 	return 0;
 }
 
 void Enc_SelfTest(void)
 {
-	printf("\r\n==== Encoder self-test (motor-driven) ====\r\n");
-	printf("PPR(x4)=%d gear=%d pulses/out-rev=%d sample=%dms duty=%u%%\r\n",
+	Log(LOG_INFO, "\r\n==== Encoder self-test (motor-driven) ====\r\n");
+	Log(LOG_INFO, "PPR(x4)=%d gear=%d pulses/out-rev=%d sample=%dms duty=%u%%\r\n",
 	       ENCODER_RESOLUTION, GEAR_RATIO, ENC_PULSES_PER_OUT_REV,
 	       SAMPLE_PERIOD_MS, (unsigned)ENC_TEST_DUTY_PCT);
-	printf("MotorA=left MotorB=right  FWD=CCW REV=CW (MOTOR_B_INVERT=%d)\r\n\r\n",
+	Log(LOG_INFO, "MotorA=left MotorB=right  FWD=CCW REV=CW (MOTOR_B_INVERT=%d)\r\n\r\n",
 	       MOTOR_B_INVERT);
 
 	ENC_MotorsStop();
 	HAL_Delay(200);
 
 	/* 1) Both wheels forward one revolution */
-	printf("Phase1: both FWD 1 rev\r\n");
+	Log(LOG_INFO, "Phase1: both FWD 1 rev\r\n");
 	if (ENC_DriveUntilPulses("P1-BOTH-FWD",
 				 ENC_DIR_FWD, ENC_DIR_FWD,
 				 1, 1, ENC_PULSES_PER_OUT_REV) != 0) {
-		printf("Phase1 failed — check motor/encoder wiring.\r\n");
+		Log(LOG_ERROR, "Phase1 failed — check motor/encoder wiring.\r\n");
 	}
 	HAL_Delay(ENC_TEST_PHASE_GAP_MS);
 
 	/* 2) Left forward, right backward, one revolution each */
-	printf("Phase2: left FWD 1 rev, right REV 1 rev\r\n");
+	Log(LOG_INFO, "Phase2: left FWD 1 rev, right REV 1 rev\r\n");
 	if (ENC_DriveUntilPulses("P2-L-FWD-R-REV",
 				 ENC_DIR_FWD, ENC_DIR_REV,
 				 1, 1, ENC_PULSES_PER_OUT_REV) != 0) {
-		printf("Phase2 failed — check motor/encoder wiring.\r\n");
+		Log(LOG_ERROR, "Phase2 failed — check motor/encoder wiring.\r\n");
 	}
 	HAL_Delay(ENC_TEST_PHASE_GAP_MS);
 
 	/* 3) Both forward at fixed duty, loop encoder print */
-	printf("Phase3: both FWD constant speed, print forever\r\n\r\n");
-	printf("P3-CONST-FWD: duty=%u%%, printing every %ums (Ctrl+reset to stop)\r\n",
+	Log(LOG_INFO, "Phase3: both FWD constant speed, print forever\r\n\r\n");
+	Log(LOG_INFO, "P3-CONST-FWD: duty=%u%%, printing every %ums (Ctrl+reset to stop)\r\n",
 	       (unsigned)ENC_TEST_DUTY_PCT, (unsigned)ENC_TEST_PRINT_MS);
 	ENC_ResetTotals();
 	ENC_MotorsDrive(ENC_DIR_FWD, ENC_DIR_FWD, ENC_TEST_PWM);

@@ -8,7 +8,7 @@
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "main.h"
-#include <stdio.h>
+#include "log.h"
 #include <string.h>
 #include <math.h>
 #include <stddef.h>
@@ -119,15 +119,15 @@ int AccelCal_ApplyToMpu(void)
 	}
 
 	if (mpu_set_accel_bias_6050_reg(bias_8g) != 0) {
-		printf("AccelCal: HW bias write failed\r\n");
+		Log(LOG_ERROR, "AccelCal: HW bias write failed\r\n");
 		/* still try DMP */
 	}
 	if (dmp_set_accel_bias(bias_dmp) != 0) {
-		printf("AccelCal: DMP bias write failed\r\n");
+		Log(LOG_ERROR, "AccelCal: DMP bias write failed\r\n");
 		return -1;
 	}
 
-	printf("AccelCal applied: bias_g=[%.4f %.4f %.4f] scale=[%.4f %.4f %.4f]\r\n",
+	Log(LOG_INFO, "AccelCal applied: bias_g=[%.4f %.4f %.4f] scale=[%.4f %.4f %.4f]\r\n",
 	       s_cal.bias_g[0], s_cal.bias_g[1], s_cal.bias_g[2],
 	       s_cal.scale[0], s_cal.scale[1], s_cal.scale[2]);
 	return 0;
@@ -165,13 +165,13 @@ static int AccelCal_ReadAvgG(float avg_g[3], int samples, int period_ms)
 
 static void AccelCal_Countdown(const char *face_name)
 {
-	printf("\r\n>>> Place device: %s\r\n", face_name);
-	printf("    Keep still on a flat surface.\r\n");
+	Log(LOG_INFO, "\r\n>>> Place device: %s\r\n", face_name);
+	Log(LOG_INFO, "    Keep still on a flat surface.\r\n");
 	for (int i = 5; i >= 1; i--) {
-		printf("    sampling in %d s...\r\n", i);
+		Log(LOG_INFO, "    sampling in %d s...\r\n", i);
 		HAL_Delay(1000);
 	}
-	printf("    sampling...\r\n");
+	Log(LOG_INFO, "    sampling...\r\n");
 }
 
 static int AccelCal_CollectFace(const char *name, float avg_g[3])
@@ -180,7 +180,7 @@ static int AccelCal_CollectFace(const char *name, float avg_g[3])
 	if (AccelCal_ReadAvgG(avg_g, 200, 10) != 0) {
 		return -1;
 	}
-	printf("    avg = [%.4f, %.4f, %.4f] g\r\n",
+	Log(LOG_INFO, "    avg = [%.4f, %.4f, %.4f] g\r\n",
 	       avg_g[0], avg_g[1], avg_g[2]);
 	return 0;
 }
@@ -190,9 +190,9 @@ void AccelCal_SelfTest(void)
 	float zp[3], zn[3], yp[3], yn[3], xp[3], xn[3];
 	AccelCalData_t cal;
 
-	printf("\r\n==== Accel 6-face calibration ====\r\n");
-	printf("Flash page @ 0x%08lX\r\n", (unsigned long)FLASH_CAL_PAGE_ADDR);
-	printf("Follow prompts: rest each face flat, wait for sample.\r\n");
+	Log(LOG_INFO, "\r\n==== Accel 6-face calibration ====\r\n");
+	Log(LOG_INFO, "Flash page @ 0x%08lX\r\n", (unsigned long)FLASH_CAL_PAGE_ADDR);
+	Log(LOG_INFO, "Follow prompts: rest each face flat, wait for sample.\r\n");
 
 	/* Prefer raw register reads without DMP FIFO contention */
 	(void)mpu_set_dmp_state(0);
@@ -219,7 +219,7 @@ void AccelCal_SelfTest(void)
 		float dy = yp[1] - yn[1];
 		float dz = zp[2] - zn[2];
 		if (fabsf(dx) < 0.5f || fabsf(dy) < 0.5f || fabsf(dz) < 0.5f) {
-			printf("ERROR: face span too small (dx=%.3f dy=%.3f dz=%.3f)\r\n",
+			Log(LOG_ERROR, "ERROR: face span too small (dx=%.3f dy=%.3f dz=%.3f)\r\n",
 			       dx, dy, dz);
 			goto fail;
 		}
@@ -228,16 +228,16 @@ void AccelCal_SelfTest(void)
 		cal.scale[2] = 2.0f / dz;
 	}
 
-	printf("\r\nComputed bias_g = [%.4f %.4f %.4f]\r\n",
+	Log(LOG_INFO, "\r\nComputed bias_g = [%.4f %.4f %.4f]\r\n",
 	       cal.bias_g[0], cal.bias_g[1], cal.bias_g[2]);
-	printf("Computed scale  = [%.4f %.4f %.4f]\r\n",
+	Log(LOG_INFO, "Computed scale  = [%.4f %.4f %.4f]\r\n",
 	       cal.scale[0], cal.scale[1], cal.scale[2]);
 
 	if (AccelCal_Save(&cal) != 0) {
-		printf("ERROR: flash save failed or result out of range\r\n");
+		Log(LOG_ERROR, "ERROR: flash save failed or result out of range\r\n");
 		goto fail;
 	}
-	printf("Saved to flash OK.\r\n");
+	Log(LOG_INFO, "Saved to flash OK.\r\n");
 
 	/* Reload DMP path briefly to push bias (firmware already loaded earlier) */
 	(void)mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
@@ -246,17 +246,17 @@ void AccelCal_SelfTest(void)
 				 DMP_FEATURE_GYRO_CAL);
 	(void)dmp_set_fifo_rate(100);
 	if (AccelCal_ApplyToMpu() != 0) {
-		printf("WARNING: apply to MPU incomplete\r\n");
+		Log(LOG_ERROR, "WARNING: apply to MPU incomplete\r\n");
 	}
 	(void)mpu_set_dmp_state(1);
 
-	printf("==== Accel calibration done. Power-cycle or set RUN_ACCEL_CAL=0 ====\r\n");
+	Log(LOG_INFO, "==== Accel calibration done. Power-cycle or set RUN_ACCEL_CAL=0 ====\r\n");
 	while (1) {
 		HAL_Delay(1000);
 	}
 
 fail:
-	printf("==== Accel calibration FAILED ====\r\n");
+	Log(LOG_ERROR, "==== Accel calibration FAILED ====\r\n");
 	while (1) {
 		HAL_Delay(1000);
 	}

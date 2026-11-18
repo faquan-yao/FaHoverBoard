@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include "log.h"
 #include "tb6612fng.h"
 #include "gpio.h"
 #include "main.h"
@@ -55,7 +55,7 @@ void MotorInit(void)
  */
 void MotorHwTest(void)
 {
-	printf("Motor DC test: STBY=1, IN CW, PWM pins GPIO HIGH (2s)\r\n");
+	Log(LOG_INFO, "Motor DC test: STBY=1, IN CW, PWM pins GPIO HIGH (2s)\r\n");
 
 	PwmPins_AsGpioHigh();
 
@@ -65,7 +65,7 @@ void MotorHwTest(void)
 	HAL_GPIO_WritePin(BIN1_GPIO_Port, BIN1_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(BIN2_GPIO_Port, BIN2_Pin, GPIO_PIN_RESET);
 
-	printf("  STBY=%d AIN1=%d AIN2=%d BIN1=%d BIN2=%d PWMA=%d PWMB=%d\r\n",
+	Log(LOG_INFO, "  STBY=%d AIN1=%d AIN2=%d BIN1=%d BIN2=%d PWMA=%d PWMB=%d\r\n",
 		   (int)HAL_GPIO_ReadPin(STBY_GPIO_Port, STBY_Pin),
 		   (int)HAL_GPIO_ReadPin(AIN1_GPIO_Port, AIN1_Pin),
 		   (int)HAL_GPIO_ReadPin(AIN2_GPIO_Port, AIN2_Pin),
@@ -73,10 +73,10 @@ void MotorHwTest(void)
 		   (int)HAL_GPIO_ReadPin(BIN2_GPIO_Port, BIN2_Pin),
 		   (int)HAL_GPIO_ReadPin(PWMA_GPIO_Port, PWMA_Pin),
 		   (int)HAL_GPIO_ReadPin(PWMB_GPIO_Port, PWMB_Pin));
-	printf("  Measure NOW on MCU pins / TB6612 inputs for 10s...\r\n");
+	Log(LOG_INFO, "  Measure NOW on MCU pins / TB6612 inputs for 10s...\r\n");
 
 	for (int i = 10; i > 0; i--) {
-		printf("  motor ON %ds\r\n", i);
+		Log(LOG_INFO, "  motor ON %ds\r\n", i);
 		HAL_Delay(1000);
 	}
 
@@ -89,7 +89,7 @@ void MotorHwTest(void)
 
 	PwmPins_RestoreAf();
 	MotorInit();
-	printf("Motor DC test done.\r\n");
+	Log(LOG_INFO, "Motor DC test done.\r\n");
 }
 
 void MotorShutdown(void)
@@ -133,7 +133,6 @@ void MotorControl(int16_t speed)
 		dir_b = MOTOR_CW;
 	}
 #endif
-	printf(" %d", pwm);
 	MotorAControl(dir_a, pwm);
 	MotorBControl(dir_b, pwm);
 }

@@ -25,7 +25,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "stdio.h"
 #include "math.h"
 #include "mpu6050.h"
 #include "tb6612fng.h"
@@ -34,8 +33,8 @@
 #include "mpu6050_test.h"
 #include "accel_cal.h"
 #include "pid_balance.h"
+#include "log.h"
 #include "Vofa.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,7 +93,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	Log_SetLevel(LOG_VOFA);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -136,22 +135,22 @@ int main(void)
 
   /* Probe I2C: AD0=GND → 0xD0, AD0=VCC → 0xD2 (HAL 8-bit addr) */
   if (HAL_I2C_IsDeviceReady(&hi2c2, 0xD0, 5, 200) == HAL_OK) {
-	  printf("MPU6050 ACK @ 0x68 (0xD0)\r\n");
+	  Log(LOG_INFO, "MPU6050 ACK @ 0x68 (0xD0)");
   } else if (HAL_I2C_IsDeviceReady(&hi2c2, 0xD2, 5, 200) == HAL_OK) {
-	  printf("MPU6050 ACK @ 0x69 (0xD2) — check AD0 / addr in inv_mpu.c\r\n");
+	  Log(LOG_ERROR, "MPU6050 ACK @ 0x69 (0xD2) — check AD0 / addr in inv_mpu.c");
   } else {
-	  printf("MPU6050 no ACK on I2C2 (PB10/SCL, PB11/SDA). Check wiring/power.\r\n");
+	  Log(LOG_ERROR, "MPU6050 no ACK on I2C2 (PB10/SCL, PB11/SDA). Check wiring/power.");
   }
 
   int ret = 0;
   do {
 	  ret = MPU6050_DMP_init();
 	  if (ret != 0) {
-		  printf("MPU6050 init failure, ret = %d!\r\n", ret);
+		  Log(LOG_ERROR, "MPU6050 init failure, ret = %d!\r\n", ret);
 		  HAL_Delay(500);
 	  }
   } while (ret);
-  printf("MPU6050 Ready!\r\n");
+  Log(LOG_INFO, "MPU6050 Ready!\r\n");
 
 #if RUN_MPU_TEST
   MPU_SelfTest(); /* UART: pitch, roll, yaw, gyro_dps — does not return */
@@ -163,7 +162,7 @@ int main(void)
   PID_Init();
   MotorShutdown();
   Vofa_PidTune_Init();
-  printf("Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f FALL=%.0f\r\n",
+  Log(LOG_INFO, "Enter balance loop. ANGLE_MECH_ZERO=%.2f GYRO_BIAS=%.2f FALL=%.0f\r\n",
 		 ANGLE_MECH_ZERO, GYRO_BIAS, FALL_ANGLE_DEG);
 
   /* USER CODE END 2 */
@@ -193,7 +192,7 @@ int main(void)
 			  if (!fallen) {
 				  fallen = 1;
 				  recover_ok_ms = 0;
-				  printf("IMU timeout, motors off\r\n");
+				  Log(LOG_ERROR, "IMU timeout, motors off\r\n");
 			  }
 			  Balance_CutAndReset(&angle_trim, &speed_filt, &gyro_filt, &duty_filt);
 		  }
@@ -211,7 +210,7 @@ int main(void)
 				  fallen = 1;
 				  recover_ok_ms = 0;
 				  Balance_CutAndReset(&angle_trim, &speed_filt, &gyro_filt, &duty_filt);
-				  printf("Fallen, motors off pitch=%.2f\r\n", pitch);
+				  Log(LOG_ERROR, "Fallen, motors off pitch=%.2f\r\n", pitch);
 			  }
 		  } else if (ang_err < RECOVER_ANGLE_DEG && fabsf(gyro_dps) < RECOVER_GYRO_DPS) {
 			  if (recover_ok_ms == 0U) {
@@ -224,7 +223,7 @@ int main(void)
 				  angle_trim = 0.0f;
 				  speed_filt = 0.0f;
 				  duty_filt = 0;
-				  printf("Recovered, motors on pitch=%.2f\r\n", pitch);
+				  Log(LOG_INFO, "Recovered, motors on pitch=%.2f\r\n", pitch);
 			  }
 		  } else {
 			  recover_ok_ms = 0;
@@ -234,7 +233,7 @@ int main(void)
 	  if (fallen) {
 		  MotorShutdown();
 		  if ((++log_div % 10U) == 0U) {
-			  printf("%.2f,%.2f,0,0\r\n", pitch, ANGLE_MECH_ZERO);
+			  Log(LOG_INFO, "%.2f,%.2f,0,0\r\n", pitch, ANGLE_MECH_ZERO);
 		  }
 		  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
 		  continue;
@@ -247,19 +246,15 @@ int main(void)
 		  //两个轮子由于是对向安装的，他们的速度方向是相反的，求和应该是（left_rpm + (-right_rpm)）/ 2.0,化简之后如下
 		  float spd = (left_rpm - right_rpm) / 2.0f;
 		  speed_filt = 0.8f * speed_filt + 0.2f * spd;
-//		  Vofa_Send_Filt_Data(spd, speed_filt);
 		  SpeedPID.NowVal = speed_filt;
 		  SpeedPID.SetVal = speed_target_rpm;
 		  angle_trim = PID_Calc(&SpeedPID);
 	  }
 	  BalancePID.SetVal = ANGLE_MECH_ZERO + SPEED_TRIM_SIGN * angle_trim;
 	  BalancePID.NowVal = pitch;
-	  float pid_balance = PID_BalanceGyro(&BalancePID, /*gyro_filt*/0);
+	  float pid_balance = PID_BalanceGyro(&BalancePID, gyro_filt);
 
-	  float vofa_pid_data[] = {BalancePID.SetVal, BalancePID.NowVal, gyro_filt, pid_balance};
-	  Vofa_JustFloat_Send(4, vofa_pid_data);
-
-	  int16_t duty = (int16_t)(MOTOR_CMD_SIGN * 9.0f * pid_balance);
+	  int16_t duty = (int16_t)(MOTOR_CMD_SIGN * pid_balance);
 
 	  duty_filt = 0.8f * duty_filt + 0.2f * duty;
 
@@ -269,8 +264,7 @@ int main(void)
 
 	  MotorControl(duty_output);
 
-//	  float vofa_data[3] = {pitch, speed_filt, duty_output};
-//	  Vofa_JustFloat_Send(3, vofa_data);
+	  Log(LOG_VOFA, "Balance PID: %.2f,%.2f,%.2f,%.2f", BalancePID.SetVal, BalancePID.NowVal, gyro_filt, pid_balance);
 
 	  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
   }
@@ -346,7 +340,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     ex: Log(LOG_ERROR, "Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

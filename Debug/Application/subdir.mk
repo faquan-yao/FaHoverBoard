@@ -5,13 +5,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Application/Vofa.c 
+../Application/Vofa.c \
+../Application/log.c 
 
 OBJS += \
-./Application/Vofa.o 
+./Application/Vofa.o \
+./Application/log.o 
 
 C_DEPS += \
-./Application/Vofa.d 
+./Application/Vofa.d \
+./Application/log.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -21,7 +24,7 @@ Application/%.o Application/%.su Application/%.cyclo: ../Application/%.c Applica
 clean: clean-Application
 
 clean-Application:
-	-$(RM) ./Application/Vofa.cyclo ./Application/Vofa.d ./Application/Vofa.o ./Application/Vofa.su
+	-$(RM) ./Application/Vofa.cyclo ./Application/Vofa.d ./Application/Vofa.o ./Application/Vofa.su ./Application/log.cyclo ./Application/log.d ./Application/log.o ./Application/log.su
 
 .PHONY: clean-Application
 

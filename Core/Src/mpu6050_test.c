@@ -6,13 +6,13 @@
 #include "mpu6050_test.h"
 #include "mpu6050.h"
 #include "main.h"
-#include <stdio.h>
+#include "log.h"
 
 void MPU_SelfTest(void)
 {
-	printf("\r\n==== MPU6050 self-test ====\r\n");
-	printf("format: pitch,roll,yaw,gyro_dps\r\n");
-	printf("units: deg,deg,deg,deg/s\r\n\r\n");
+	Log(LOG_INFO, "\r\n==== MPU6050 self-test ====\r\n");
+	Log(LOG_INFO, "format: pitch,roll,yaw,gyro_dps\r\n");
+	Log(LOG_INFO, "units: deg,deg,deg,deg/s\r\n\r\n");
 
 	while (1) {
 		float pitch, roll, yaw, gyro_dps;
@@ -22,7 +22,7 @@ void MPU_SelfTest(void)
 			continue;
 		}
 
-		printf("%.2f,%.2f,%.2f,%.2f\r\n", pitch, roll, yaw, gyro_dps);
+		Log(LOG_INFO, "%.2f,%.2f,%.2f,%.2f\r\n", pitch, roll, yaw, gyro_dps);
 		HAL_Delay(100);
 	}
 }
