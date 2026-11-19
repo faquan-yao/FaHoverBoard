@@ -188,6 +188,7 @@ static void Vofa_ApplyCmd(char *s)
 {
 	const char *num = NULL;
 	float v;
+	Log(LOG_INFO, "Vofa command: %s\n", s);
 
 	while (*s == ' ' || *s == '\t') {
 		s++;

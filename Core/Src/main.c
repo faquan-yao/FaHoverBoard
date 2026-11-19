@@ -93,7 +93,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	Log_SetLevel(LOG_VOFA);
+	Log_SetLevel(LOG_INFO);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -263,7 +263,7 @@ int main(void)
 
 	  MotorControl(duty_output);
 
-	  Log(LOG_VOFA, "Balance PID: %.2f,%.2f,%.2f,%.2f", BalancePID.SetVal, BalancePID.NowVal, gyro_filt, pid_balance);
+//	  Log(LOG_VOFA, "Balance PID: %.2f,%.2f,%.2f,%.2f", BalancePID.SetVal, BalancePID.NowVal, gyro_filt, pid_balance);
 
 	  HAL_GPIO_TogglePin(PULSE_LIGHT_GPIO_Port, PULSE_LIGHT_Pin);
   }
